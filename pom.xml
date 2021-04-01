@@ -16,7 +16,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
-    <hazelcast.version>3.12.10</hazelcast.version>
+    <hazelcast.version>3.12.12</hazelcast.version>
   </properties>
 
   <dependencies>
