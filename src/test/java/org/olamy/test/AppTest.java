@@ -39,7 +39,7 @@ public class AppTest
         env.put("JAVA_OPTS", "-Dhazelcast.local.publicAddress=127.0.0.1:5701 -Dhazelcast.config=/opt/hazelcast/config_ext/hazelcast.xml");
         //env.put("JAVA_OPTS", "-Dhazelcast.local.publicAddress=" + hostAddress);// + " -Dhazelcast.config=/opt/hazelcast/config_ext/hazelcast.xml");
 
-        String imageName =  "hazelcast/hazelcast:" + System.getProperty( "hazelcast.version", "3.12.10");
+        String imageName =  "hazelcast/hazelcast:" + System.getProperty( "hazelcast.version", "3.12.12");
         try (GenericContainer hazelcast =
                  new FixedHostPortGenericContainer(imageName) // FixedHostPortGenericContainer
                      .withFixedExposedPort(5701, 5701)
