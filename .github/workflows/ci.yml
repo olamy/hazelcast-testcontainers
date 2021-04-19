@@ -46,6 +46,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
+          distribution: 'adopt'
           java-version: ${{ matrix.java }}
       - name: Set up Maven
         uses: stCarolas/setup-maven@v4.1
