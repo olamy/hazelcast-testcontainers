@@ -9,7 +9,7 @@
     </outbound-ports>
     <port>5701</port>
     <join>
-      <tcp-ip enabled="true">
+      <tcp-ip connection-timeout-seconds="10" enabled="true">
 <!--        <member-list>-->
 <!--          <member>host.docker.internal:5702</member>-->
 <!--        </member-list>-->
