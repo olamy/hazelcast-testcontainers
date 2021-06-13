@@ -9,9 +9,11 @@ import com.hazelcast.core.HazelcastInstance;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.FixedHostPortGenericContainer;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -36,17 +38,23 @@ public class AppTest
     @Test
     public void startDockerFirst() throws Exception
     {
+        Testcontainers.exposeHostPorts(5705, 5701);
         String hostAddress = InetAddress.getLocalHost().getHostAddress(); //.getLoopbackAddress().getHostAddress();
         hostAddress = "127.0.0.1";
         LOGGER.info("hostAddress: {}", hostAddress);
         Map<String, String> env = new HashMap<>();
+        //Network network = Network.newNetwork();
         // -Dhazelcast.local.publicAddress=localhost
-        env.put("JAVA_OPTS", "-Dhazelcast.local.publicAddress=127.0.0.1 -Dhazelcast.config=/opt/hazelcast/config_ext/hazelcast.xml");
+        String extOpts = "";// "-Dhazelcast.local.publicAddress=host.testcontainers.internal";
+        env.put("JAVA_OPTS", extOpts + "-Dhazelcast.config=/opt/hazelcast/config_ext/hazelcast.xml");
 
         String imageName =  "hazelcast/hazelcast:" + System.getProperty( "hazelcast.version", "3.12.12");
         try (GenericContainer hazelcast =
-                 new GenericContainer(imageName) // FixedHostPortGenericContainer
-                     .withExposedPorts(5701, 55125, 55126)
+                 new FixedHostPortGenericContainer(imageName) //  GenericContainer
+                     .withFixedExposedPort(5701, 5701)
+                     //.withFixedExposedPort(55125, 55125)
+                     //.withFixedExposedPort( 55126, 55126)
+                     .withExposedPorts(55125, 55126)
                      .withEnv(env)
                      .waitingFor(Wait.forLogMessage(".*is STARTED.*", 1))
                      .withClasspathResourceMapping( "hazelcast-server.xml",
@@ -54,11 +62,12 @@ public class AppTest
                                                     BindMode.READ_ONLY)
                      .withLogConsumer(new Slf4jLogConsumer(HAZELCAST_LOG)))
         {
+            //hazelcast.setPortBindings(Arrays.asList("5701:5701", "55125:55125", "55126:55126"));
             hazelcast.start();
 
             String host = InetAddress.getByName(hazelcast.getContainerIpAddress()).getHostAddress();
             //String host =  hazelcast.getContainerIpAddress();
-            int port = hazelcast.getMappedPort(5701);
+            int port = 5701; // hazelcast.getMappedPort(5701);
 
             String member = host+":"+port;
             LOGGER.info("initial hazelcast member {}", member);
