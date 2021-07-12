@@ -38,23 +38,24 @@ public class AppTest
     @Test
     public void startDockerFirst() throws Exception
     {
-        Testcontainers.exposeHostPorts(5705, 5701);
-        String hostAddress = InetAddress.getLocalHost().getHostAddress(); //.getLoopbackAddress().getHostAddress();
-        hostAddress = "127.0.0.1";
-        LOGGER.info("hostAddress: {}", hostAddress);
+        //Testcontainers.exposeHostPorts(5705, 5701);
+
         Map<String, String> env = new HashMap<>();
+        InetAddress inetAddress = InetAddress.getLocalHost();
+        String localIp = inetAddress.getHostAddress();
+        LOGGER.info("localIp: {}", localIp);
         //Network network = Network.newNetwork();
         // -Dhazelcast.local.publicAddress=localhost
-        String extOpts = "";// "-Dhazelcast.local.publicAddress=host.testcontainers.internal";
-        env.put("JAVA_OPTS", extOpts + "-Dhazelcast.config=/opt/hazelcast/config_ext/hazelcast.xml");
-
+        String extOpts = "-Dhazelcast.local.publicAddress="+localIp; // 127.0.0.1;// "-Dhazelcast.local.publicAddress=host.testcontainers.internal";
+        env.put("JAVA_OPTS", extOpts + " -Dhazelcast.config=/opt/hazelcast/config_ext/hazelcast.xml -Dhazelcast.diagnostics.enabled=true");
+        env.put("HZ_NETWORK_PUBLICADDRESS", localIp+":5701"); // 127.0.0.1
         String imageName =  "hazelcast/hazelcast:" + System.getProperty( "hazelcast.version", "3.12.12");
         try (GenericContainer hazelcast =
                  new FixedHostPortGenericContainer(imageName) //  GenericContainer
                      .withFixedExposedPort(5701, 5701)
                      //.withFixedExposedPort(55125, 55125)
                      //.withFixedExposedPort( 55126, 55126)
-                     .withExposedPorts(55125, 55126)
+                     //.withExposedPorts(55125, 55126)
                      .withEnv(env)
                      .waitingFor(Wait.forLogMessage(".*is STARTED.*", 1))
                      .withClasspathResourceMapping( "hazelcast-server.xml",
@@ -66,7 +67,7 @@ public class AppTest
             hazelcast.start();
 
             String host = InetAddress.getByName(hazelcast.getContainerIpAddress()).getHostAddress();
-            //String host =  hazelcast.getContainerIpAddress();
+            LOGGER.info("hazelcast.getContainerIpAddress():{}", hazelcast.getContainerIpAddress());
             int port = 5701; // hazelcast.getMappedPort(5701);
 
             String member = host+":"+port;
@@ -99,10 +100,99 @@ public class AppTest
             Config config = new XmlConfigBuilder(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))).build();
 
             HazelcastInstance instance = Hazelcast.getOrCreateHazelcastInstance(config);
-            Map map = instance.getMap("foo");
 
+            for (int i = 0; i < 10000; i++) {
+                instance.getMap("FOO").put("test", i);
+            }
             assertEquals(2, instance.getCluster().getMembers().size());
+            instance.getCluster().getMembers().forEach(clusterMember ->
+                {
+                    LOGGER.info("clusterMember/address: {}/{}", clusterMember, clusterMember.getAddress());
+
+                }
+            );
+
+
+
 
         }
     }
+
+
+    //@Test
+    public void startDockerSecond() throws Exception
+    {
+
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            + "<hazelcast xsi:schemaLocation=\"http://www.hazelcast.com/schema/config hazelcast-config-3.8.xsd\"\n"
+            + "           xmlns=\"http://www.hazelcast.com/schema/config\"\n"
+            + "           xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n"
+            + "<instance-name>foobar</instance-name>\n"
+            + "  <network>\n"
+            + "    <port port-count=\"20\">5701</port>\n"
+            + "    <join>\n"
+            + "      <multicast enabled=\"true\">\n"
+            + "      </multicast>\n"
+            + "      <tcp-ip enabled=\"false\">\n"
+            //+ "        <member-list>\n"
+            //+ "          <member>"+member+"</member>\n"
+            //+ "        </member-list>\n"
+            + "      </tcp-ip>\n"
+            + "      <aws enabled=\"false\"/>\n"
+            + "    </join>\n"
+            + "  </network>\n"
+            + "  <properties>\n"
+            + "    <property name=\"hazelcast.logging.type\">true</property>\n"
+            + "  </properties>"
+            + "</hazelcast>";
+
+        LOGGER.info("xml {}", xml);
+
+        Config config = new XmlConfigBuilder(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))).build();
+
+        HazelcastInstance instance = Hazelcast.getOrCreateHazelcastInstance(config);
+
+
+        Map<String, String> env = new HashMap<>();
+        InetAddress inetAddress = InetAddress.getLocalHost();
+        String localIp = inetAddress.getHostAddress();
+        LOGGER.info("localIp: {}", localIp);
+        //Network network = Network.newNetwork();
+        // -Dhazelcast.local.publicAddress=localhost
+        String extOpts = "-Dhazelcast.local.publicAddress="+localIp; // 127.0.0.1;// "-Dhazelcast.local.publicAddress=host.testcontainers.internal";
+        env.put("JAVA_OPTS", extOpts + " -Dhazelcast.config=/opt/hazelcast/config_ext/hazelcast.xml -Dhazelcast.diagnostics.enabled=true");
+        env.put("HZ_NETWORK_PUBLICADDRESS", localIp+":5701"); // 127.0.0.1
+        String imageName =  "hazelcast/hazelcast:" + System.getProperty( "hazelcast.version", "3.12.12");
+        try (GenericContainer hazelcast =
+                 new FixedHostPortGenericContainer(imageName) //  GenericContainer
+                     .withFixedExposedPort(5702, 5701)
+                     //.withFixedExposedPort(55125, 55125)
+                     //.withFixedExposedPort( 55126, 55126)
+                     //.withExposedPorts(55125, 55126)
+                     .withEnv(env)
+                     .waitingFor(Wait.forLogMessage(".*is STARTED.*", 1))
+                     .withClasspathResourceMapping( "hazelcast-server-second.xml",
+                                                    "/opt/hazelcast/config_ext/hazelcast.xml",
+                                                    BindMode.READ_ONLY)
+                     .withLogConsumer(new Slf4jLogConsumer(HAZELCAST_LOG)))
+        {
+            //hazelcast.setPortBindings(Arrays.asList("5701:5701", "55125:55125", "55126:55126"));
+            hazelcast.start();
+
+            String host = InetAddress.getByName(hazelcast.getContainerIpAddress()).getHostAddress();
+            LOGGER.info("hazelcast.getContainerIpAddress():{}", hazelcast.getContainerIpAddress());
+            int port = 5701; // hazelcast.getMappedPort(5701);
+
+            String member = host+":"+port;
+            LOGGER.info("initial hazelcast member {}", member);
+
+
+            Map map = instance.getMap("foo");
+
+            assertEquals(2, instance.getCluster().getMembers().size());
+            instance.getCluster().getMembers().forEach(clusterMember -> LOGGER.info("clusterMember: {}", clusterMember));
+
+        }
+    }
+
 }
